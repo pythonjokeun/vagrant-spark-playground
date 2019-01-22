@@ -6,6 +6,9 @@ BOX_IMAGE = "bento/ubuntu-16.04"
 # modify this to define number of slaves
 N_SLAVE = 2
 
+# modify this to define python version available on the nodes
+PY_VERSION = 3.7
+
 Vagrant.configure("2") do |config|
 
   # define master VM
@@ -13,7 +16,7 @@ Vagrant.configure("2") do |config|
     subconfig.vm.box = BOX_IMAGE
     subconfig.vm.hostname = "master"
     subconfig.vm.network "private_network", ip: "10.0.0.10"
-    subconfig.vm.network "forwarded_port", guest: 8080, host: 8080
+    subconfig.vm.network "forwarded_port", guest: 8080, host: 8080, host_ip: "10.0.0.10"
     
     # uncomment and modify these lines below to customize master VM computing resource
     # subconfig.vm.provider "virtualbox" do |vbox|
@@ -25,10 +28,12 @@ Vagrant.configure("2") do |config|
   # define slave VMs
   (1..N_SLAVE).each do |index|
     config.vm.define "slave0#{index}" do |subconfig|
+      slave_ip = "10.0.0.#{index + 10}"
+
       subconfig.vm.box = BOX_IMAGE
       subconfig.vm.hostname = "slave#{index}"
-      subconfig.vm.network "private_network", ip: "10.0.0.#{index + 10}"
-      subconfig.vm.network "forwarded_port", guest: 8081, host: 8081
+      subconfig.vm.network "private_network", ip: slave_ip
+      subconfig.vm.network "forwarded_port", guest: 8081, host: 8081, host_ip: slave_ip
 
       # uncomment and modify these lines below to customize slave VM computing resource
       # subconfig.vm.provider "virtualbox" do |vbox|
@@ -40,8 +45,10 @@ Vagrant.configure("2") do |config|
 
   # install Spark on all VMs
   config.vm.provision "shell", inline: <<-SHELL
+    apt-get install software-properties-common
+    add-apt-repository ppa:deadsnakes/ppa
     apt-get update
-    apt-get install -y --no-install-recommends default-jdk
+    apt-get install -y --no-install-recommends default-jdk python#{PY_VERSION}
     wget https://www-eu.apache.org/dist/spark/spark-2.4.0/spark-2.4.0-bin-hadoop2.7.tgz
     tar xvf spark-2.4.0-bin-hadoop2.7.tgz
     mv spark-2.4.0-bin-hadoop2.7 spark
